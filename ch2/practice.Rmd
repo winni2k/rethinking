@@ -1,0 +1,183 @@
+---
+title: "chapter 2"
+author: "Warren Kretzschmar"
+date: "6/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Chapter 2 problems
+
+### Problem 2M3
+
+```{r}
+# Pr(land|earth) = 0.3
+# Pr(land|mars) = 1
+# Pr(land) = (Pr(land |earth) * Pr(earth) + Pr(land|mars) * Pr(mars)) / 2
+# Pr(earth) = 0.5
+# Pr(mars) = 0.5
+# Pr(earth|land) = Pr(land|earth) * Pr(earth) / Pr(land)
+like_e = dbinom(1, 1, 0.3)
+like_e
+like_m = 1
+prior_e = 0.5
+prior_m = 0.5
+ave_prob = like_e * prior_e + like_m * prior_m
+ave_prob
+like_e
+ave_prob
+posterior = like_e * prior_e / ave_prob
+post_m = like_m * prior_m / ave_prob
+posterior + post_m 
+posterior
+```
+
+### 2M4
+```
+Card 1 side 1 = B
+Card 1 side 2 = B
+Card 2 side 1 = B
+```
+Ways to produce B/B:
+```
+Card 1 = 1 * 2 = 2
+Card 2 = 1 * 1 = 1
+Card 3 = 1 * 0 = 0
+
+Posterior = 2 / (1 + 2) = 2/3
+```
+### 2M5
+```
+Card 1 = 2 * 2 = 4
+Card 2 = 1 * 1 = 1
+Card 3 = 1 * 0 = 0
+
+Posterior = 4 / 5
+```
+### 2M6
+```
+Card 1 = 1 * 2 = 2
+Card 2 = 2 * 1 = 2
+Card 3 = 3 * 0 = 0
+
+Posterior = 2 / 4
+```
+### 2M7
+```
+Card 1,2 = 1 * 2 * 1 * 1 = 2
+Card 1,3 = 1 * 2 * 1 * 2 = 4
+Card 2,1 = 1 * 1 * 1 * 0 = 0
+Card 2,3 = 1 * 1 * 1 * 2 = 2
+Card 3,* = 0
+
+Posterior = (2 + 4) / 8 = 0.75
+```
+
+### 2H1
+```
+PriorA = PriorB =0.5
+Pr(Twins) = 0.1*0.5 + 0.2 + 0.5 = 0.15
+Pr(A|twins) = Pr(Twins|A)Pr(A)/Pr(Twins)
+```
+```{r}
+pr_a_g_t = 0.1 * 0.5 / 0.15
+pr_a_g_t
+pr_b_g_t = 0.2 * 0.5 / 0.15
+pr_b_g_t
+```
+
+Next birth:
+Multiply the likelihoods times their priors, which are the species posteriors
+after having seen one birth of twins:
+
+`Pr(Twins) = Pr(Twins|A) Pr(A) + Pr(Twins|B) Pr(B)`
+```{r}
+post_t = 0.1 * pr_a_g_t + 0.2 * pr_b_g_t
+post_t
+```
+
+Let's do it the other way round. No need for prior as both species have 
+equal prior:
+
+```
+Panda A T,T 0.1 * 0.1 = 0.01
+Panda A T,S 0.1 * 0.9 = 0.09
+Panda B T,T 0.2 * 0.2 = 0.04
+Panda B T,S 0.2 * 0.8 = 0.16
+
+Pr(Twins on second birth)= (0.01 + 0.04) / (0.01 + 0.09 + 0.04 + 0.16)
+```
+
+```{r}
+(0.01 + 0.04) / (0.01 + 0.09 + 0.04 + 0.16)
+```
+
+### 2H2
+
+This is the first posterior from the first answer to question 2H1:
+
+```
+Pr(A|twins) = Pr(Twins|A)Pr(A)/Pr(Twins)
+```
+```{r}
+pr_a_g_t = 0.1 * 0.5 / 0.15
+pr_a_g_t
+```
+### 2H3
+
+```
+Pr(A|Singleton) = Pr(Singleton|A) * Pr_a_g_t(A) / Pr(Singleton)
+Pr(Singleton) = Pr(Singleton|A) * Pr_a_g_t(A) + Pr(Singleton|B) * Pr_b_g_t(B)
+```
+```{r}
+pr_a_g_ts = pr_a_g_t * 0.9 / (pr_a_g_t * 0.9 + pr_b_g_t * 0.8)
+pr_a_g_ts
+```
+
+### 2H4
+```
+Pr(+A|A) = 0.8
+Pr(+A|B) = 1-0.65 = 0.35
+Pr(+B|A) = 1-0.8 = 0.2
+Pr(+B|B) = 0.65
+
+Pr(A|+A) = Pr(+A|A) * Pr(A) / Pr(+A)
+```
+```{r}
+pr_a_g_pa = 0.8 * 0.5 / (0.8*0.5 + 0.35 * 0.5)
+pr_a_g_pa
+```
+
+Redefine Pr(A) as posterior Pr(A|T)
+
+```
+Pr(A|+A) = Pr(+A|A) * Pr(A|T) / Pr(+A)
+         = Pr(+A|A) * Pr(A|T) / (Pr(+A|A) * Pr(A|T) + Pr(+A|B) * Pr(B|T))
+```
+```{r}
+pr_a_g_tpA =  0.8 * pr_a_g_t / (0.8 * pr_a_g_t  + 0.35 * pr_b_g_t)
+pr_a_g_t
+pr_a_g_tpA
+```
+
+
+--- This does not work ---
+```
+Pr(A,+A,T) = Pr(A)Pr(+A,T|A)
+Pr(+A,T) = Pr(+A|T)Pr(T)
+Pr(+A,T|A) = Pr(+A|T,A)Pr(T|A)
+Pr(A|+A,T) = Pr(+A,T|A)/Pr(T|A)
+```
+
+Using chain rule:
+```
+Pr(A,+A,T) = Pr(A)Pr(T|A)Pr(+A|T,A)
+           = Pr(T)Pr(A|T)Pr(+A|T,A)
+           = Pr(+A)Pr(A|+A)Pr(T|A,+A)
+```
+
+
+--- End of this does not work ---
