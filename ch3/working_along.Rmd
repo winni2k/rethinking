@@ -1,0 +1,53 @@
+---
+title: "ch3"
+author: "Warren Kretzschmar"
+date: "6/7/2021"
+output: html_document
+---
+
+
+### Setup
+```{r}
+library(rethinking)
+```
+```{r}
+# R 3.2
+p_grid <- seq( from=0 , to=1 , length.out=1000 )
+prob_p <- rep( 1 , 1000 )
+prob_data <- dbinom( 6 , size=9 , prob=p_grid )
+posterior <- prob_data * prob_p
+posterior <- posterior / sum(posterior)
+```
+
+```{r}
+samples <- sample( p_grid , prob=posterior , size=1e4 , replace=TRUE )
+plot(samples)
+dens(samples)
+```
+
+```{r}
+# R code 3.11
+p_grid <- seq( from=0 , to=1 , length.out=1000 )
+prior <- rep(1,1000)
+likelihood <- dbinom( 3 , size=3 , prob=p_grid ) 
+posterior <- likelihood * prior
+posterior <- posterior / sum(posterior)
+samples <- sample( p_grid , size=1e4 , replace=TRUE , prob=posterior )
+```
+
+```{r}
+dens(samples)
+```
+
+```{r}
+# R code 3.17
+sum( posterior*abs( 0.5 - p_grid ) )
+plot(posterior)
+plot(p_grid)
+```
+
+```{r}
+# R code 3.18
+loss <- sapply( p_grid , function(d) sum( posterior*abs( d - p_grid ) ) )
+plot(p_grid, loss)
+```
