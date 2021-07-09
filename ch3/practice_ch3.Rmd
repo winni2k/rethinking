@@ -1,0 +1,223 @@
+---
+title: "practice chapter 3"
+author: "Warren Kretzschmar"
+date: "6/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+library(tidyverse)
+library(ggplot2)
+```
+```{r}
+p_grid <- seq( from=0 , to=1 , length.out=1000 )
+prior <- rep( 1 , 1000 )
+likelihood <- dbinom( 6 , size=9 , prob=p_grid )
+posterior <- likelihood * prior
+posterior <- posterior / sum(posterior)
+plot(posterior)
+set.seed(100)
+samples <- sample( p_grid , prob=posterior , size=1e4 , replace=TRUE )
+```
+
+## 3E1
+
+```{r}
+mean(samples < 0.2)
+```
+
+## 3E2
+
+```{r}
+mean(samples > 0.8)
+```
+
+## 3E3
+
+```{r}
+mean(samples < 0.8 & samples > 0.2)
+```
+
+## 3E4
+
+```{r}
+n_samp = length(samples)
+sorted_samples = sort(samples)
+# 3E4
+sorted_samples[(n_samp*0.2)]
+quantile(sorted_samples, 0.2)
+# 3E5
+sorted_samples[(n_samp*0.8)]
+quantile(sorted_samples, 0.8)
+# 3E6
+start_end = tibble(
+  start=1:(n_samp - n_samp*0.66+1),
+  end=(n_samp*0.66):n_samp
+  )
+start_end = start_end %>%
+  mutate(width=sorted_samples[end] - sorted_samples[start])
+start_end %>% 
+  pull(width) %>%
+  which.min %>% 
+  start_end[.,] %>% 
+  mutate(start_p=sorted_samples[start], 
+         end_p=sorted_samples[end])
+
+
+# 3E7
+left_edge = which(cumsum(sorted_samples) / sum(sorted_samples) >=  0.22)[1]
+
+right_edge = which(cumsum(sorted_samples) / sum(sorted_samples) >=  0.88)[1]
+right_edge
+sorted_samples[c(left_edge,(right_edge-1))]
+quantile(sorted_samples, c(0.22, 0.88))
+```
+
+## 3M1
+
+```{r}
+p_grid <- seq( from=0 , to=1 , length.out=1000 )
+prior <- rep( 1 , 1000 )
+likelihood <- dbinom( 8 , size=15 , prob=p_grid )
+posterior <- likelihood * prior
+posterior <- posterior / sum(posterior)
+plot(posterior)
+set.seed(100)
+
+### 3M2
+samples <- sample( p_grid , prob=posterior , size=1e4 , replace=TRUE )
+
+ssamp = sort(samples)
+hpdi_index_start = 1:1001 %>% sapply(function(x) diff(ssamp[c(x, x+8999)])) %>% 
+  which.min()
+
+plot(density(samples), main="90% HPDI")
+hpdi = ssamp[c(hpdi_index_start, hpdi_index_start + 8999)]
+hpdi
+abline(v=hpdi,col="red")
+```
+
+```{r}
+### 3M3
+waters = rbinom(1e4, size=15, prob=samples)
+ggplot(tibble(waters=waters),
+       aes(x=waters)) +
+  geom_bar()
+sum(waters == 8) / length(waters)
+```
+
+```{r}
+### 3M4
+waters = rbinom(1e4, size=9, prob=samples)
+sum(waters == 6) / length(waters)
+```
+
+```{r}
+### 3M5
+p_grid <- seq( from=0 , to=1 , length.out=1000 )
+prior <- c(rep( 0 , 500 ), rep(1,500))
+likelihood <- dbinom( 8 , size=15 , prob=p_grid )
+posterior <- likelihood * prior
+posterior <- posterior / sum(posterior)
+plot(posterior)
+set.seed(100)
+samples <- sample( p_grid , prob=posterior , size=1e4 , replace=TRUE )
+plot(density(samples))
+
+ssamp = sort(samples)
+hpdi_index_start = 1:1001 %>% sapply(function(x) diff(ssamp[c(x, x+8999)])) %>% 
+  which.min()
+
+plot(density(samples), main="90% HPDI")
+hpdi = ssamp[c(hpdi_index_start, hpdi_index_start + 8999)]
+hpdi
+abline(v=hpdi,col="red")
+
+waters = rbinom(1e4, size=15, prob=samples)
+ggplot(tibble(waters=waters),
+       aes(x=waters)) +
+  geom_bar()
+sum(waters == 8) / length(waters)
+```
+
+```{r}
+### 3M6
+
+prior <- rep( 1 , 1000)
+p_grid = seq( from=0 , to=1 , length.out=1000)
+n_samp = c(10,100,200,400,800,1600,2000,2100,2200,2400,3200)
+n_samp %>% sapply(function(x){
+  likelihood = dbinom(0.7*x, size=x, prob=p_grid)
+  posterior = likelihood * prior
+  posterior = posterior / sum(posterior)
+#  samples = sample( p_grid , prob=posterior , size=1e4 , replace=TRUE )
+  pi = cumsum(posterior) >= 0.005 & cumsum(posterior) < .995
+  pi_idx = which(pi)
+  pi99_diff = diff(pi_idx[c(1,length(pi_idx))])
+  list(n_samp = x, pi99_width = pi99_diff / length(posterior))
+})
+
+# The required tosses is somewhere between 1.6k and 3.2k; around 2.1k
+```
+
+
+```{r}
+### 3H1
+
+library(rethinking)
+data(homeworkch3)
+n_boys = sum(birth1) + sum(birth2)
+n_boys
+n = length(birth1) + length(birth2)
+n_girls = n - n_boys
+n_girls
+n
+```
+
+```{r}
+like = dbinom(n_boys, n, p_grid)
+prior = rep(1, length(like))
+posterior = prior * like
+posterior = posterior/sum(posterior)
+p_grid[which.max(posterior)]
+```
+
+```{r}
+# 3H2
+samples = sample(p_grid, prob=posterior, size=1e4,replace=TRUE)
+dens(samples)
+hpdis = HPDI(samples, prob=c(0.5, .89, .97))
+abline(v=hpdis)
+hpdis
+```
+
+```{r}
+### 3H3
+set.seed(42)
+simplehist(rbinom(1e4,n, prob=n_boys/n))
+abline(v=111, col="red")
+```
+
+```{r}
+### 3H4
+n_boys_b1 = sum(birth1)
+n_b1 = length(birth1)
+simplehist(rbinom(1e4,n_b1, prob=n_boys_b1/n_b1))
+abline(v=n_boys_b1, col="red")
+```
+
+```{r}
+### 3H5
+n_boys_after_girl = sum(!birth1 & birth2)
+n_girls_b1 = sum(!birth1)
+n_boys_after_girl
+n_girls_b1
+simplehist(rbinom(1e4, size=n_girls_b1,
+                  prob=n_boys/n))
+abline(v=n_boys_after_girl, col="red")
+cor(birth1, birth2, method="kendall")
+```

@@ -1,0 +1,240 @@
+---
+title: "chapter 5 exercises"
+author: "Warren Kretzschmar"
+date: "6/27/2021"
+output: html_document
+---
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+### 5e1
+2,4
+
+### 5e2
+$$
+\mu_i = \alpha + \beta_a a_i + \beta_p p_i
+$$
+### 5e3
+
+$$
+\mu_i = \alpha + \beta_f f_i + \beta_s s_i
+$$
+
+$\beta_f$ should be greater than zero, and $\beta_s$ should be less than zero.
+
+### 5m1
+
+Number of daily sun hours, ice cream sales and motorcycle deaths.
+
+D -> I
+D -> M
+
+### 5m2
+
+Number of people admitted to hospital with heat stroke in July, proportion of homes with air conditioning, average July temperatures (northern hemisphere).
+
+### 5m3
+
+I high divorce rate means more people that are eligible to get married (at an older age). Sometimes people get divorced in order to marry someone else. regress marriage rate against divorce rate and median age of marriage. If divorce rate can explain median age of marriage contribution, then this is consistent with divorce causing marriage.
+
+### 5m4
+
+```{r}
+library(rethinking) 
+data(WaffleDivorce) 
+d <- WaffleDivorce
+d
+d$A <- scale( d$MedianAgeMarriage ) 
+d$D <- scale( d$Divorce )
+d$M = scale(d$Marriage)
+```
+
+```{r}
+lds = read_excel('ch5/lds_membership_by_state.xlsx') %>% 
+  rename(Location=State)
+lds
+```
+
+```{r}
+d = d %>% merge(lds %>% select(Location, Membership, LDS))
+d$L = scale(d$LDS)
+d
+```
+
+```{r}
+m5e4 <- quap( 
+  alist(
+    D ~ dnorm( mu , sigma ) , 
+    mu <- a + bM*M + bA*A + bL*L , 
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    bL ~ dnorm(0, 0.5),
+    sigma ~ dexp( 1 )
+  ) , 
+  data = d ) 
+precis(m5e4)
+plot(coeftab(m5e4))
+```
+
+```{r}
+library(dagitty)
+dag = dagitty("dag {
+  Gas -> Driving
+  Driving -> Exercise
+  Driving -> EatingOut
+  EatingOut -> HugeMealConsumption
+  HugeMealConsumption -> Obesity
+  Exercise -> Obesity
+        }")
+drawdag( dag )
+```
+
+Regress Obesity on Driving, Eating out, and Exercise.
+
+### 5H1
+
+```{r}
+data(foxes)
+d = foxes
+d
+```
+
+
+```{r}
+hist(d$weight)
+d$W = scale(d$weight)
+m5h1.1 = quap(
+  alist(
+    W ~ dnorm(mu, sigma),
+    mu <- a + b * area,
+    a ~ dnorm(0, 1),
+    b ~ dnorm(0, 0.2),
+    sigma ~ dexp(1)
+  ),
+  data=d
+)
+precis(m5h1.1)
+```
+```{r}
+m5h1.2 = quap(
+  alist(
+    W ~ dnorm(mu, sigma),
+    mu <- a + b * groupsize,
+    a ~ dnorm(0, 1),
+    b ~ dnorm(0, 0.2),
+    sigma ~ dexp(1)
+  ),
+  data=d
+)
+precis(m5h1.2)
+```
+
+```{r}
+x.seq <- seq( from=min(d$area) , to=max(d$area) , length.out=30 )
+mu <- link( m5h1.1 , data=list(area=x.seq) )
+mu.mean <- apply( mu , 2 , mean )
+mu.PI <- apply( mu , 2 , PI , prob=0.95 )
+plot(d$area, d$W)
+lines(x.seq, mu.mean)
+shade( mu.PI , x.seq )
+```
+
+```{r}
+x.seq <- seq( from=min(d$groupsize) , to=max(d$groupsize) ,
+              length.out=30 )
+mu <- link( m5h1.2 , data=list(groupsize=x.seq) )
+mu.mean <- apply( mu , 2 , mean )
+mu.PI <- apply( mu , 2 , PI , prob=0.95 )
+plot(d$groupsize, d$W)
+lines(x.seq, mu.mean)
+shade( mu.PI , x.seq )
+```
+
+### 5H2
+```{r}
+m5h2 = quap(
+  alist(
+    W ~ dnorm(mu, sigma),
+    mu <- a + b1 * area + b2 * groupsize,
+    a ~ dnorm(0, 1),
+    b1 ~ dnorm(0, 0.2),
+    b2 ~ dnorm(0, 0.2),
+    sigma ~ dexp(1)
+  ),
+  data=d
+)
+precis(m5h2)
+
+```
+```{r}
+area.seq <- seq( from=min(d$area) , to=max(d$area) , length.out=30 )
+d_a = tibble(area=area.seq, groupsize=mean(d$groupsize))
+d_a
+```
+```{r}
+area_sim = sim(m5h2, data=d_a)
+area.pi = area_sim %>% apply(2, PI, prob=0.25)
+area.pi
+W.mean =area_sim %>% apply(2, mean) 
+plot(area.seq, W.mean)
+?shade
+shade(area.pi, area.seq)
+lines(area.seq, W.mean)
+```
+
+We see an effect here because we are looking at a particular slice of groupsize, whereas in 5H1 we were looking at points with a distribution of groupsize that correlates negatively with area.
+
+```{r}
+groupsize.seq <- seq( from=min(d$groupsize) , to=max(d$groupsize) , length.out=30 )
+d_gs = tibble(groupsize=groupsize.seq, area=mean(d$area))
+d_gs
+```
+```{r}
+groupsize_sim = sim(m5h2, data=d_gs)
+groupsize.pi = groupsize_sim %>% apply(2, PI, prob=0.25)
+groupsize.pi
+W.mean =groupsize_sim %>% apply(2, mean) 
+plot(groupsize.seq, W.mean)
+?shade
+shade(groupsize.pi, groupsize.seq)
+lines(groupsize.seq, W.mean)
+```
+
+
+```{r}
+d$gs = scale(d$groupsize)
+d$af = scale(d$avgfood)
+m5h3.1 = quap(
+  alist(
+    W ~ dnorm(mu, sigma),
+    mu <- a  + b2 * gs + b3 * af,
+    a ~ dnorm(0, 1),
+    b2 ~ dnorm(0, 0.2),
+    b3 ~ dnorm(0, 0.2),
+    sigma ~ dexp(1)
+  ),
+  data=d
+)
+precis(m5h3.1)
+
+```
+
+```{r}
+m5h3.2 = quap(
+  alist(
+    W ~ dnorm(mu, sigma),
+    mu <- a + b3 * avgfood + b2 * groupsize + b1 * area,
+    a ~ dnorm(0, 1),
+    b1 ~ dnorm(0, 0.2),
+    b2 ~ dnorm(0, 0.2),
+    b3 ~ dnorm(0, 0.2),
+    sigma ~ dexp(1)
+  ),
+  data=d
+)
+precis(m5h3.2)
+
+```

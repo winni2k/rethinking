@@ -1,0 +1,206 @@
+---
+title: "Chapter 5 working along"
+author: "Warren Kretzschmar"
+date: "6/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dagitty)
+library(rethinking) 
+library(tidyverse)
+data(WaffleDivorce) 
+d <- WaffleDivorce
+# standardize variables
+d$A <- scale( d$MedianAgeMarriage )
+d$D <- scale( d$Divorce )
+d$M <- scale( d$Marriage )
+```
+```{r}
+
+dag5.1 = dagitty(
+  "dag {
+  A -> D
+  A -> M
+  M -> D
+  }"
+)
+coordinates(dag5.1) <- list( x=c(A=0.5,D=1,M=1) , y=c(A=0.5,D=1,M=0) )
+drawdag(dag5.1)
+```
+```{r}
+m5.3 <- quap(
+  alist(
+    D ~ dnorm( mu , sigma ) , 
+    mu <- a + bM*M + bA*A , 
+    a ~ dnorm( 0 , 0.2 ) ,
+    bM ~ dnorm( 0 , 0.5 ) ,
+    bA ~ dnorm( 0 , 0.5 ) ,
+    sigma ~ dexp( 1 )
+    ) ,
+  data = d )
+precis( m5.3 )
+plot( coeftab(m5.3), par=c("bA","bM") )
+```
+
+
+```{r}
+# 5.13
+m5.4 <- quap( alist(
+  M ~ dnorm( mu , sigma ) ,
+  mu <- a + bAM * A ,
+  a ~ dnorm( 0 , 0.2 ) , 
+  bAM ~ dnorm( 0 , 0.5 ) ,
+  sigma ~ dexp( 1 )
+) , data = d )
+```
+
+```{r}
+#5.14
+mu = link(m5.4)
+mu_mean <- apply( mu , 2 , mean )
+mu_resid <- d$M - mu_mean
+```
+
+```{r}
+# 5.15
+# call link without specifying new data # so it uses original data
+mu <- link( m5.3 )
+# summarize samples across cases 
+mu_mean <- apply( mu , 2 , mean )
+mu_PI <- apply( mu , 2 , PI )
+# simulate observations
+# again no new data, so uses original data 
+D_sim <- sim( m5.3 , n=1e4 )
+D_PI <- apply( D_sim , 2 , PI )
+```
+```{r}
+plot( mu_mean ~ d$D , col=rangi2 , ylim=range(mu_PI) ,
+      xlab="Observed divorce" , ylab="Predicted divorce" )
+abline( a=0 , b=1 , lty=2 )
+for ( i in 1:nrow(d) ) lines( rep(d$D[i],2) , mu_PI[,i] , col=rangi2 )
+```
+
+```{r}
+data(WaffleDivorce) 
+d <- list()
+d$A <- standardize( WaffleDivorce$MedianAgeMarriage )
+d$D <- standardize(WaffleDivorce$Divorce )
+d$M <- standardize(WaffleDivorce$Marriage )
+m5.3_A <- quap( alist(
+  ## A -> D <- M
+  D ~ dnorm( mu , sigma ) ,
+  mu <- a + bM*M + bA*A ,
+  a ~ dnorm( 0 , 0.2 ) , 
+  bM ~ dnorm( 0 , 0.5 ) ,
+  bA ~ dnorm( 0 , 0.5 ) ,
+  sigma ~ dexp( 1 ),
+  ## A -> M
+  M ~ dnorm( mu_M , sigma_M ),
+  mu_M <- aM + bAM*A,
+  aM ~ dnorm( 0 , 0.2 ),
+  bAM ~ dnorm( 0 , 0.5 ),
+  sigma_M ~ dexp( 1 )
+) , data = d )
+precis(m5.3_A)
+```
+```{r}
+A_seq <- seq( from=-2 , to=2 , length.out=30 )
+sim_dat <- data.frame( A=A_seq )
+# simulate M and then D, using A_seq
+s <- sim( m5.3_A , data=sim_dat , vars=c("M","D") )
+
+# display counterfactual predictions
+plot( sim_dat$A , colMeans(s$D) , ylim=c(-2,2) , type="l" ,
+      xlab="manipulated A" , ylab="counterfactual D" ) 
+shade( apply(s$D,2,PI) , sim_dat$A )
+mtext( "Total counterfactual effect of A on D" )
+
+plot( sim_dat$A , colMeans(s$M) , ylim=c(-2,2) , type="l" ,
+      xlab="manipulated A" , ylab="counterfactual M" ) 
+shade( apply(s$M,2,PI) , sim_dat$A )
+mtext( "Total counterfactual effect of A on M" )
+```
+
+
+```{r}
+# R 5.43
+dag5.7 <- dagitty( "dag{ M -> K <- N
+M -> N }" )
+coordinates(dag5.7) <- list( x=c(M=0,K=1,N=2) , y=c(M=0.5,K=1,N=0.5) )
+MElist <- equivalentDAGs(dag5.7)
+drawdag(MElist)
+```
+
+### 5.3
+
+```{r}
+data(Howell1) 
+d <- Howell1 
+str(d)
+```
+
+```{r}
+d = d %>% mutate(sex = if_else(male == 1, 1, 2))
+m5.8 <- quap( alist(
+height ~ dnorm( mu , sigma ) ,
+mu <- a[sex] ,
+a[sex] ~ dnorm( 178 , 20 ) ,
+sigma ~ dunif( 0 , 50 )
+) , 
+data=d ) 
+precis( m5.8 , depth=2 )
+```
+
+```{r}
+post <- extract.samples(m5.8) 
+post$diff_fm <- post$a[,1] - post$a[,2] 
+precis( post , depth=2 )
+```
+
+```{r}
+# R 5.49
+data(milk)
+d <- milk 
+unique(d$clade)
+```
+```{r}
+d$clade_id <- as.integer( d$clade )
+d$clade_id %>% unique
+```
+
+```{r}
+d$K <- scale( d$kcal.per.g )
+m5.9 <- quap(
+alist(
+K ~ dnorm( mu , sigma ),
+mu <- a[clade_id],
+a[clade_id] ~ dnorm( 0 , 0.5 ),
+sigma ~ dexp( 1 )
+) , data=d )
+labels <- paste( "a[" , 1:4 , "]:" , levels(d$clade) , sep="" )
+plot( precis( m5.9 , depth=2 , pars="a" ) , labels=labels ,
+    xlab="expected kcal (std)" )
+```
+
+
+```{r}
+set.seed(63)
+d$house <- sample( rep(1:4,each=8) , size=nrow(d) )
+```
+
+```{r}
+m5.10 <- quap( alist(
+K ~ dnorm( mu , sigma ),
+mu <- a[clade_id] + h[house], 
+a[clade_id] ~ dnorm( 0 , 0.5 ),
+h[house] ~ dnorm( 0 , 0.5 ), 
+sigma ~ dexp( 1 )
+) , data=d )
+plot(precis(m5.10, depth=2))
+```
+

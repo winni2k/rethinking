@@ -1,0 +1,25 @@
+---
+title: "chapter 6 exercises"
+author: "Warren Kretzschmar"
+date: "7/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+$\newcommand{\indep}{\perp \!\!\! \perp}$
+## 6E1
+
+1. Multi-collinearity -- when multiple variables that are highly correlated are included in a model
+2. Post-treatment bias -- variables that are the result of a treatment are better predictors of outcome than the treatment itself, or predict outcome due to an unmeasured effect
+3. Collider bias -- including an effect of two or more causes as a predictor for one of those causes induces a correlation between the causes
+
+## 6E2
+
+## 6E3
+
+1. The fork -- a cause that affects two outcomes E1 <- C -> E2 -- E1 $\indep$ E2 | C
+2. The pipe -- a line of causes E1 -> E2 -> E3 -- E1 $\indep$ E3 | E2
+3. The collider -- an effect that has two causes C1 -> E <- C2 -- C1 !$\indep$ C2 | E
+4. The descendant -- a collider that has a downstream effect
